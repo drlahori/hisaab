@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'models.dart';
 import 'screens/txn_editor.dart';
 import 'store.dart';
+import 'style.dart';
 
 const kIncome = Color(0xFF2E7D32);
 const kExpense = Color(0xFFD84315);
@@ -229,12 +230,16 @@ class EmptyState extends StatelessWidget {
 }
 
 class TxnTile extends StatelessWidget {
-  const TxnTile({super.key, required this.txn});
+  const TxnTile({super.key, required this.txn, this.boxed = false});
 
   final Txn txn;
 
+  /// Draw as its own card (Midnight and Bold styles).
+  final bool boxed;
+
   @override
   Widget build(BuildContext context) {
+    final s = hs;
     final cat = store.category(txn.categoryId);
     final acc = store.account(txn.accountId)?.name ?? '?';
     final String title;
@@ -250,24 +255,75 @@ class TxnTile extends StatelessWidget {
       accText = acc;
     }
     final subtitle = txn.note.isEmpty ? accText : '${txn.note} · $accText';
-    return ListTile(
-      dense: true,
-      leading: CircleAvatar(
-        backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-        child: Text(emoji, style: const TextStyle(fontSize: 18)),
+    final tint = tintFor(txn.type == TxType.transfer ? 'transfer' : (cat?.name ?? ''));
+    final size = s.id == 'bold' ? 44.0 : (s.id == 'midnight' ? 42.0 : 40.0);
+    final amountColor = switch (txn.type) {
+      TxType.income => s.inc,
+      TxType.expense => s.exp,
+      TxType.transfer => s.sub,
+    };
+    final row = Padding(
+      padding: EdgeInsets.symmetric(horizontal: boxed ? 12 : 0, vertical: boxed ? 12 : 10),
+      child: Row(children: [
+        Container(
+          width: size,
+          height: size,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: tint.$1,
+            borderRadius: BorderRadius.circular(size * s.avatarRadius),
+          ),
+          child: Text(emoji, style: const TextStyle(fontSize: 19)),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title,
+                style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: s.id == 'clean' ? FontWeight.w600 : FontWeight.w700,
+                    color: s.text)),
+            const SizedBox(height: 2),
+            Text(subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 12, color: s.sub)),
+          ]),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          money(txn.amount),
+          style: TextStyle(
+            fontFamily: s.id == 'bold' ? s.headFont : null,
+            fontSize: s.id == 'bold' ? 16 : 15,
+            fontWeight: FontWeight.w700,
+            color: amountColor,
+          ),
+        ),
+      ]),
+    );
+    if (!boxed) {
+      return InkWell(onTap: () => openTxnEditor(context, txn: txn), child: row);
+    }
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: s.card,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: BorderSide(color: s.cardBorder, width: s.id == 'bold' ? 1.5 : 1),
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: () => openTxnEditor(context, txn: txn),
+          child: row,
+        ),
       ),
-      title: Text(title),
-      subtitle: Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
-      trailing: Text(
-        money(txn.amount),
-        style: TextStyle(color: typeColor(txn.type), fontWeight: FontWeight.w600),
-      ),
-      onTap: () => openTxnEditor(context, txn: txn),
     );
   }
 }
 
-/// Transactions grouped by day, newest first.
+/// Transactions grouped by day, newest first, drawn in the chosen style.
 class DailyList extends StatelessWidget {
   const DailyList({super.key, required this.txns, this.header});
 
@@ -276,11 +332,12 @@ class DailyList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = hs;
     if (txns.isEmpty) {
       return ListView(children: [
         if (header != null) header!,
         const SizedBox(height: 60),
-        const EmptyState(text: 'No transactions yet.\nTap + to add one.'),
+        const EmptyState(text: 'No transactions yet.\nTap Add to record one.'),
       ]);
     }
     final days = <DateTime, List<Txn>>{};
@@ -290,38 +347,49 @@ class DailyList extends StatelessWidget {
     }
     final keys = days.keys.toList()..sort((a, b) => b.compareTo(a));
     final extra = header == null ? 0 : 1;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
     return ListView.builder(
-      padding: const EdgeInsets.only(bottom: 96),
+      padding: const EdgeInsets.fromLTRB(0, 6, 0, 96),
       itemCount: keys.length + extra,
       itemBuilder: (context, i) {
         if (header != null && i == 0) return header!;
         final day = keys[i - extra];
         final list = days[day]!;
-        return Card(
-          margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-          clipBehavior: Clip.antiAlias,
-          child: Column(children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
-              child: Row(children: [
-                Text('${day.day}',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleLarge
-                        ?.copyWith(fontWeight: FontWeight.bold)),
-                const SizedBox(width: 8),
-                Text(DateFormat('EEE, MMM yyyy').format(day),
-                    style: Theme.of(context).textTheme.bodySmall),
-                const Spacer(),
-                Text(money(AppStore.sum(list, TxType.income)),
-                    style: const TextStyle(color: kIncome, fontSize: 12)),
-                const SizedBox(width: 10),
-                Text(money(AppStore.sum(list, TxType.expense)),
-                    style: const TextStyle(color: kExpense, fontSize: 12)),
-              ]),
+        final net = AppStore.sum(list, TxType.income) - AppStore.sum(list, TxType.expense);
+        var label = day == today
+            ? 'Today · ${DateFormat('EEE d').format(day)}'
+            : DateFormat('EEE d MMM').format(day);
+        if (s.id == 'bold') label = label.toUpperCase();
+        final total = net == 0 ? '' : (net > 0 ? '+${money(net)}' : '−${money(-net)}');
+        final head = Padding(
+          padding: const EdgeInsets.fromLTRB(4, 8, 4, 6),
+          child: Row(children: [
+            Expanded(
+              child: Text(label,
+                  style: TextStyle(
+                    fontSize: s.id == 'bold' ? 12 : 13,
+                    letterSpacing: s.id == 'bold' ? 0.5 : 0,
+                    fontWeight: FontWeight.w700,
+                    color: s.id == 'clean' ? s.text : s.sub,
+                  )),
             ),
-            const Divider(height: 1),
-            for (final t in list) TxnTile(txn: t),
+            Text(total, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: s.sub)),
+          ]),
+        );
+        return Padding(
+          padding: EdgeInsets.symmetric(horizontal: s.id == 'midnight' ? 16 : 20),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            head,
+            if (s.groupDays)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+                margin: const EdgeInsets.only(bottom: 6),
+                decoration: BoxDecoration(color: s.card, borderRadius: BorderRadius.circular(20)),
+                child: Column(children: [for (final t in list) TxnTile(txn: t)]),
+              )
+            else
+              for (final t in list) TxnTile(txn: t, boxed: true),
           ]),
         );
       },

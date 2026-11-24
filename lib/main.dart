@@ -10,6 +10,7 @@ import 'screens/settings.dart';
 import 'screens/stats.dart';
 import 'screens/transactions.dart';
 import 'store.dart';
+import 'style.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,27 +19,6 @@ Future<void> main() async {
   await drive.load();
   runApp(const HisaabApp());
   maybeAutoBackup();
-}
-
-const kSeed = Color(0xFF0F766E); // teal
-
-ThemeData _theme(Brightness b) {
-  final scheme = ColorScheme.fromSeed(seedColor: kSeed, brightness: b);
-  return ThemeData(
-    useMaterial3: true,
-    colorScheme: scheme,
-    appBarTheme: const AppBarTheme(scrolledUnderElevation: 0),
-    navigationBarTheme: NavigationBarThemeData(
-      height: 68,
-      labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-      labelTextStyle: WidgetStateProperty.resolveWith(
-        (states) => TextStyle(
-          fontSize: 12,
-          fontWeight: states.contains(WidgetState.selected) ? FontWeight.w700 : FontWeight.w500,
-        ),
-      ),
-    ),
-  );
 }
 
 class HisaabApp extends StatelessWidget {
@@ -51,13 +31,8 @@ class HisaabApp extends StatelessWidget {
       builder: (context, _) => MaterialApp(
         title: 'Hisaab',
         debugShowCheckedModeBanner: false,
-        theme: _theme(Brightness.light),
-        darkTheme: _theme(Brightness.dark),
-        themeMode: switch (store.theme) {
-          'light' => ThemeMode.light,
-          'dark' => ThemeMode.dark,
-          _ => ThemeMode.system,
-        },
+        theme: buildTheme(hs),
+        themeMode: ThemeMode.light,
         home: const HomeShell(),
         builder: (context, child) => ListenableBuilder(
           listenable: appLock,
@@ -111,20 +86,61 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     SettingsScreen(),
   ];
 
+  static const _tabs = <(IconData, IconData, String)>[
+    (Icons.receipt_long_outlined, Icons.receipt_long, 'Records'),
+    (Icons.pie_chart_outline, Icons.pie_chart, 'Stats'),
+    (Icons.account_balance_wallet_outlined, Icons.account_balance_wallet, 'Accounts'),
+    (Icons.calculate_outlined, Icons.calculate, 'Calc'),
+    (Icons.more_horiz, Icons.more_horiz, 'More'),
+  ];
+
   @override
   Widget build(BuildContext context) {
+    final s = hs;
     return Scaffold(
+      backgroundColor: s.bg,
       body: IndexedStack(index: _index, children: _pages),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.receipt_long_outlined), selectedIcon: Icon(Icons.receipt_long), label: 'Records'),
-          NavigationDestination(icon: Icon(Icons.pie_chart_outline), selectedIcon: Icon(Icons.pie_chart), label: 'Stats'),
-          NavigationDestination(icon: Icon(Icons.account_balance_wallet_outlined), selectedIcon: Icon(Icons.account_balance_wallet), label: 'Accounts'),
-          NavigationDestination(icon: Icon(Icons.calculate_outlined), selectedIcon: Icon(Icons.calculate), label: 'Calc'),
-          NavigationDestination(icon: Icon(Icons.more_horiz), label: 'More'),
-        ],
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Container(
+          margin: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+          height: 68,
+          decoration: BoxDecoration(
+            color: s.nav,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: const [BoxShadow(color: Color(0x22000000), blurRadius: 16, offset: Offset(0, 6))],
+          ),
+          child: Row(children: [
+            for (var i = 0; i < _tabs.length; i++)
+              Expanded(
+                child: Semantics(
+                  selected: i == _index,
+                  button: true,
+                  label: _tabs[i].$3,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(20),
+                    onTap: () => setState(() => _index = i),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(i == _index ? _tabs[i].$2 : _tabs[i].$1,
+                            size: 22, color: i == _index ? Colors.white : s.navOff),
+                        const SizedBox(height: 4),
+                        Text(
+                          _tabs[i].$3,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: i == _index ? FontWeight.w700 : FontWeight.w500,
+                            color: i == _index ? Colors.white : s.navOff,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+          ]),
+        ),
       ),
     );
   }

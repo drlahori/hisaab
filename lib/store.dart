@@ -20,6 +20,9 @@ class AppStore extends ChangeNotifier {
   /// 'system', 'light' or 'dark'.
   String theme = 'system';
 
+  /// Look chosen in More → Appearance: 'clean', 'midnight' or 'bold'.
+  String style = 'clean';
+
   /// Automatic backup: 0 = off, otherwise every N days.
   int autoBackupDays = 0;
   DateTime? lastAutoBackup;
@@ -60,6 +63,7 @@ class AppStore extends ChangeNotifier {
         'txns': txns.map((t) => t.toJson()).toList(),
         'budgets': budgets,
         'theme': theme,
+        'style': style,
         'autoBackupDays': autoBackupDays,
         'lastAutoBackup': lastAutoBackup?.toIso8601String(),
         'lastBackupPath': lastBackupPath,
@@ -88,6 +92,7 @@ class AppStore extends ChangeNotifier {
     currency = (m['currency'] as String?) ?? 'Rs';
     symbolFront = (m['symbolFront'] as bool?) ?? true;
     theme = (m['theme'] as String?) ?? 'system';
+    style = (m['style'] as String?) ?? 'clean';
     autoBackupDays = (m['autoBackupDays'] as num?)?.toInt() ?? 0;
     lastAutoBackup = DateTime.tryParse((m['lastAutoBackup'] as String?) ?? '');
     lastBackupPath = m['lastBackupPath'] as String?;
@@ -119,9 +124,10 @@ class AppStore extends ChangeNotifier {
       throw const FormatException('This file is not a Hisaab backup.');
     }
     // Keep this phone's backup settings; only the money data is replaced.
-    final days = autoBackupDays, last = lastAutoBackup, path = lastBackupPath, th = theme;
+    final days = autoBackupDays, last = lastAutoBackup, path = lastBackupPath, th = theme, st = style;
     _applyMap(decoded);
     theme = th;
+    style = st;
     autoBackupDays = days;
     lastAutoBackup = last;
     lastBackupPath = path;
@@ -266,6 +272,11 @@ class AppStore extends ChangeNotifier {
     } else {
       budgets[categoryId] = amount;
     }
+    _changed();
+  }
+
+  void setStyle(String value) {
+    style = value;
     _changed();
   }
 

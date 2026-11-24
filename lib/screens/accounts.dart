@@ -78,10 +78,11 @@ class AccountsScreen extends StatelessWidget {
                 ],
             ],
           ),
-          floatingActionButton: FloatingActionButton(
+          floatingActionButton: FloatingActionButton.extended(
             heroTag: 'fab-accounts',
             onPressed: () => openAccountEditor(context),
-            child: const Icon(Icons.add),
+            icon: const Icon(Icons.add),
+            label: const Text('Account'),
           ),
         );
       },

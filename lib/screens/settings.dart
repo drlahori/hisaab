@@ -14,6 +14,7 @@ import '../drive.dart';
 import '../lock.dart';
 import '../models.dart';
 import '../store.dart';
+import '../style.dart';
 import 'budgets.dart';
 import 'calculator.dart';
 import 'lock_screens.dart';
@@ -89,11 +90,13 @@ class SettingsScreen extends StatelessWidget {
             ),
           ),
           ListTile(
-            leading: const Icon(Icons.dark_mode_outlined),
-            title: const Text('Theme'),
-            subtitle: Text(const {'system': 'Same as phone', 'light': 'Light', 'dark': 'Dark'}[store.theme] ?? 'Same as phone'),
+            leading: const Icon(Icons.palette_outlined),
+            title: const Text('Appearance'),
+            subtitle: Text(hs.name),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => _pickTheme(context),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const AppearanceScreen()),
+            ),
           ),
           ListTile(
             leading: const Icon(Icons.calculate_outlined),
@@ -133,7 +136,7 @@ class SettingsScreen extends StatelessWidget {
           const _Header('About'),
           const ListTile(
             leading: Icon(Icons.info_outline),
-            title: Text('Hisaab 1.4'),
+            title: Text('Hisaab 1.5'),
             subtitle: Text('No ads. Your data stays on your phone and in backups you choose.'),
           ),
         ]),
@@ -203,25 +206,6 @@ class SettingsScreen extends StatelessWidget {
     } catch (e) {
       if (context.mounted) toast(context, 'Restore failed: $e');
     }
-  }
-
-  Future<void> _pickTheme(BuildContext context) async {
-    const options = {'system': 'Same as phone', 'light': 'Light', 'dark': 'Dark'};
-    final picked = await showDialog<String>(
-      context: context,
-      builder: (ctx) => SimpleDialog(
-        title: const Text('Theme'),
-        children: [
-          for (final e in options.entries)
-            ListTile(
-              title: Text(e.value),
-              trailing: store.theme == e.key ? const Icon(Icons.check) : null,
-              onTap: () => Navigator.pop(ctx, e.key),
-            ),
-        ],
-      ),
-    );
-    if (picked != null) store.setTheme(picked);
   }
 
   Future<void> _pickFrequency(BuildContext context) async {
@@ -598,6 +582,100 @@ class _DriveSection extends StatelessWidget {
           ),
         ]);
       },
+    );
+  }
+}
+
+class AppearanceScreen extends StatelessWidget {
+  const AppearanceScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: store,
+      builder: (context, _) {
+        final cur = hs;
+        return Scaffold(
+          appBar: AppBar(title: const Text('Appearance')),
+          body: ListView(padding: const EdgeInsets.fromLTRB(20, 8, 20, 32), children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Text('STYLE',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 0.6, color: cur.sub)),
+            ),
+            for (final st in kStyles)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Material(
+                  color: cur.card,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    side: BorderSide(
+                      color: st.id == cur.id ? cur.ui : cur.cardBorder,
+                      width: st.id == cur.id ? 2 : 1,
+                    ),
+                  ),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(20),
+                    onTap: () => store.setStyle(st.id),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(children: [
+                        _StylePreview(style: st),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Text(st.name,
+                                style: TextStyle(
+                                    fontFamily: st.headFont, fontSize: 17, fontWeight: FontWeight.w700, color: cur.text)),
+                            const SizedBox(height: 4),
+                            Text(st.desc, style: TextStyle(fontSize: 13, color: cur.sub, height: 1.35)),
+                          ]),
+                        ),
+                        Icon(st.id == cur.id ? Icons.check_circle : Icons.radio_button_unchecked,
+                            color: st.id == cur.id ? cur.ui : cur.sub),
+                      ]),
+                    ),
+                  ),
+                ),
+              ),
+          ]),
+        );
+      },
+    );
+  }
+}
+
+class _StylePreview extends StatelessWidget {
+  const _StylePreview({required this.style});
+  final HStyle style;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = style;
+    final hero = s.id == 'bold' ? s.text : s.accent;
+    return Container(
+      width: 76,
+      height: 100,
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: s.bg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: s.cardBorder),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Container(height: 26, decoration: BoxDecoration(color: hero, borderRadius: BorderRadius.circular(8))),
+        const SizedBox(height: 6),
+        Container(height: 10, decoration: BoxDecoration(color: s.card, borderRadius: BorderRadius.circular(5), border: Border.all(color: s.cardBorder))),
+        const SizedBox(height: 5),
+        FractionallySizedBox(
+          alignment: Alignment.centerLeft,
+          widthFactor: 0.7,
+          child: Container(height: 10, decoration: BoxDecoration(color: s.card, borderRadius: BorderRadius.circular(5), border: Border.all(color: s.cardBorder))),
+        ),
+        const Spacer(),
+        Container(height: 12, decoration: BoxDecoration(color: s.nav, borderRadius: BorderRadius.circular(6))),
+      ]),
     );
   }
 }

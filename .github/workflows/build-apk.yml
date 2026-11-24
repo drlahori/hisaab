@@ -54,6 +54,8 @@ jobs:
           if [ -z "$GOOGLE_WEB_CLIENT_ID" ]; then echo "::warning::GOOGLE_WEB_CLIENT_ID secret not set, so Google Drive backup is switched off in this build."; fi
           flutter build apk --release --build-number=${{ github.run_number }} --dart-define=GOOGLE_WEB_CLIENT_ID="$GOOGLE_WEB_CLIENT_ID"
           cp build/app/outputs/flutter-apk/app-release.apk hisaab.apk
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: *//; s/+.*//; s/\.0$//')
+          echo "APP_VERSION=$VERSION" >> "$GITHUB_ENV"
 
       - name: Show signing certificate
         run: |
@@ -69,7 +71,7 @@ jobs:
       - name: Publish to Releases
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: build-${{ github.run_number }}
-          name: Hisaab build ${{ github.run_number }}
-          body: Download hisaab.apk below and open it on your Android phone to install.
+          tag_name: v${{ env.APP_VERSION }}-build-${{ github.run_number }}
+          name: Hisaab v${{ env.APP_VERSION }} (build ${{ github.run_number }})
+          body: Download hisaab.apk below and open it on your Android phone to install. It updates your current Hisaab and keeps your data.
           files: hisaab.apk
