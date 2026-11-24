@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'dart:math';
+import 'dart:typed_data';
 
 enum TxType { income, expense, transfer }
 
@@ -25,6 +27,16 @@ const kAccountGroups = <String>[
 
 double _d(Object? v) => v is num ? v.toDouble() : 0;
 
+const kGroupEmoji = <String, String>{
+  'Cash': '💵',
+  'Bank': '🏦',
+  'Card': '💳',
+  'Savings': '🐷',
+  'Investments': '📈',
+  'Loan': '🧾',
+  'Other': '👛',
+};
+
 class Account {
   Account({
     required this.id,
@@ -32,6 +44,8 @@ class Account {
     this.group = 'Cash',
     this.initial = 0,
     this.note = '',
+    this.emoji,
+    this.image,
   });
 
   final String id;
@@ -40,8 +54,39 @@ class Account {
   double initial;
   String note;
 
-  Map<String, dynamic> toJson() =>
-      {'id': id, 'name': name, 'group': group, 'initial': initial, 'note': note};
+  /// Custom emoji; null means the group's default.
+  String? emoji;
+
+  /// Custom logo as base64 PNG (small, already resized). Wins over emoji.
+  String? image;
+
+  String get shownEmoji => emoji ?? kGroupEmoji[group] ?? '👛';
+
+  Uint8List? _bytes;
+  String? _bytesFor;
+  Uint8List? get imageBytes {
+    final img = image;
+    if (img == null) return null;
+    if (_bytesFor != img) {
+      try {
+        _bytes = base64Decode(img);
+      } catch (_) {
+        _bytes = null;
+      }
+      _bytesFor = img;
+    }
+    return _bytes;
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'group': group,
+        'initial': initial,
+        'note': note,
+        'emoji': emoji,
+        'image': image,
+      };
 
   factory Account.fromJson(Map<String, dynamic> j) => Account(
         id: j['id'] as String,
@@ -49,6 +94,8 @@ class Account {
         group: (j['group'] as String?) ?? 'Cash',
         initial: _d(j['initial']),
         note: (j['note'] as String?) ?? '',
+        emoji: j['emoji'] as String?,
+        image: j['image'] as String?,
       );
 }
 

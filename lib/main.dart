@@ -4,6 +4,7 @@ import 'backup.dart';
 import 'lock.dart';
 import 'screens/lock_screens.dart';
 import 'screens/accounts.dart';
+import 'screens/calculator.dart';
 import 'screens/settings.dart';
 import 'screens/stats.dart';
 import 'screens/transactions.dart';
@@ -94,6 +95,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     TransactionsScreen(),
     StatsScreen(),
     AccountsScreen(),
+    CalculatorScreen(),
     SettingsScreen(),
   ];
 
@@ -108,6 +110,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           NavigationDestination(icon: Icon(Icons.receipt_long_outlined), selectedIcon: Icon(Icons.receipt_long), label: 'Transactions'),
           NavigationDestination(icon: Icon(Icons.pie_chart_outline), selectedIcon: Icon(Icons.pie_chart), label: 'Stats'),
           NavigationDestination(icon: Icon(Icons.account_balance_wallet_outlined), selectedIcon: Icon(Icons.account_balance_wallet), label: 'Accounts'),
+          NavigationDestination(icon: Icon(Icons.calculate_outlined), selectedIcon: Icon(Icons.calculate), label: 'Calculator'),
           NavigationDestination(icon: Icon(Icons.more_horiz), label: 'More'),
         ],
       ),

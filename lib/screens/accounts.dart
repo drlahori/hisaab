@@ -1,3 +1,8 @@
+import 'dart:convert';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../common.dart';
@@ -56,6 +61,7 @@ class AccountsScreen extends StatelessWidget {
                   ),
                   for (final a in store.accounts.where((a) => a.group == g))
                     ListTile(
+                      leading: AccountAvatar(account: a),
                       title: Text(a.name),
                       subtitle: a.note.isEmpty ? null : Text(a.note),
                       trailing: Text(
@@ -127,6 +133,7 @@ class AccountDetail extends StatelessWidget {
           body: DailyList(
             txns: list,
             header: ListTile(
+              leading: AccountAvatar(account: a, radius: 24),
               title: const Text('Balance'),
               subtitle: Text(a.group),
               trailing: Text(money(store.balance(a.id)),
@@ -158,6 +165,8 @@ class _AccountEditorState extends State<AccountEditor> {
       text: widget.account == null ? '' : amountText(widget.account!.initial));
   late final _note = TextEditingController(text: widget.account?.note ?? '');
   late String _group = widget.account?.group ?? 'Cash';
+  late String? _emoji = widget.account?.emoji;
+  late String? _image = widget.account?.image;
 
   @override
   void dispose() {
@@ -184,8 +193,37 @@ class _AccountEditorState extends State<AccountEditor> {
       group: _group,
       initial: initial,
       note: _note.text.trim(),
+      emoji: _emoji,
+      image: _image,
     ));
     Navigator.pop(context);
+  }
+
+  Account get _preview => Account(
+        id: 'preview',
+        name: _name.text,
+        group: _group,
+        emoji: _emoji,
+        image: _image,
+      );
+
+  Future<void> _pickEmoji() async {
+    final e = await pickEmoji(context, current: _emoji ?? kGroupEmoji[_group]);
+    if (e != null) setState(() {
+      _emoji = e;
+      _image = null;
+    });
+  }
+
+  Future<void> _pickLogo() async {
+    try {
+      final f = await FilePicker.pickFile(type: FileType.image);
+      if (f == null) return;
+      final small = await shrinkImage(await f.readAsBytes());
+      setState(() => _image = base64Encode(small));
+    } catch (e) {
+      if (mounted) toast(context, 'Could not use that image: $e');
+    }
   }
 
   Future<void> _delete() async {
@@ -214,6 +252,29 @@ class _AccountEditorState extends State<AccountEditor> {
         ],
       ),
       body: ListView(padding: const EdgeInsets.all(16), children: [
+        Center(child: AccountAvatar(account: _preview, radius: 40)),
+        const SizedBox(height: 12),
+        Wrap(alignment: WrapAlignment.center, spacing: 8, runSpacing: 8, children: [
+          OutlinedButton.icon(
+            onPressed: _pickEmoji,
+            icon: const Icon(Icons.emoji_emotions_outlined),
+            label: const Text('Emoji'),
+          ),
+          OutlinedButton.icon(
+            onPressed: _pickLogo,
+            icon: const Icon(Icons.image_outlined),
+            label: const Text('Upload logo'),
+          ),
+          if (_emoji != null || _image != null)
+            TextButton(
+              onPressed: () => setState(() {
+                _emoji = null;
+                _image = null;
+              }),
+              child: const Text('Reset'),
+            ),
+        ]),
+        const SizedBox(height: 20),
         Text('Group', style: Theme.of(context).textTheme.labelLarge),
         const SizedBox(height: 8),
         Wrap(spacing: 8, runSpacing: 4, children: [
@@ -259,6 +320,95 @@ class _AccountEditorState extends State<AccountEditor> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Resizes a picked logo to at most 160px wide and returns PNG bytes.
+Future<Uint8List> shrinkImage(Uint8List bytes, {int width = 160}) async {
+  final codec = await ui.instantiateImageCodec(bytes, targetWidth: width);
+  final frame = await codec.getNextFrame();
+  final data = await frame.image.toByteData(format: ui.ImageByteFormat.png);
+  if (data == null) throw Exception('Unsupported image');
+  return data.buffer.asUint8List();
+}
+
+const _suggestedEmoji = [
+  '💵', '🏦', '💳', '🐷', '📈', '🧾', '👛', '💰', '🪙', '💼',
+  '📱', '🏠', '🚗', '🎓', '🛒', '💎', '🏧', '💸', '🤝', '⭐',
+];
+
+Future<String?> pickEmoji(BuildContext context, {String? current}) {
+  return showDialog<String>(
+    context: context,
+    builder: (ctx) => _EmojiDialog(current: current),
+  );
+}
+
+class _EmojiDialog extends StatefulWidget {
+  const _EmojiDialog({this.current});
+  final String? current;
+
+  @override
+  State<_EmojiDialog> createState() => _EmojiDialogState();
+}
+
+class _EmojiDialogState extends State<_EmojiDialog> {
+  final _c = TextEditingController();
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return AlertDialog(
+      title: const Text('Choose an emoji'),
+      content: SingleChildScrollView(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Wrap(spacing: 4, runSpacing: 4, children: [
+            for (final e in _suggestedEmoji)
+              InkWell(
+                borderRadius: BorderRadius.circular(10),
+                onTap: () => Navigator.pop(context, e),
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    color: e == widget.current ? scheme.primaryContainer : null,
+                  ),
+                  child: Text(e, style: const TextStyle(fontSize: 26)),
+                ),
+              ),
+          ]),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _c,
+            decoration: const InputDecoration(
+              labelText: 'Or type any emoji',
+              border: OutlineInputBorder(),
+            ),
+            onSubmitted: (v) {
+              if (v.trim().isNotEmpty) Navigator.pop(context, v.trim());
+            },
+          ),
+        ]),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        FilledButton(
+          onPressed: () {
+            final v = _c.text.trim();
+            Navigator.pop(context, v.isEmpty ? null : v);
+          },
+          child: const Text('Use'),
+        ),
+      ],
     );
   }
 }

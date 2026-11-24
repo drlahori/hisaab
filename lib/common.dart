@@ -180,6 +180,32 @@ class SummaryBar extends StatelessWidget {
   }
 }
 
+class AccountAvatar extends StatelessWidget {
+  const AccountAvatar({super.key, required this.account, this.radius = 20});
+
+  final Account account;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) {
+    final bytes = account.imageBytes;
+    if (bytes != null) {
+      return Container(
+        width: radius * 2,
+        height: radius * 2,
+        padding: EdgeInsets.all(radius * 0.18),
+        decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+        child: ClipOval(child: Image.memory(bytes, fit: BoxFit.contain, gaplessPlayback: true)),
+      );
+    }
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+      child: Text(account.shownEmoji, style: TextStyle(fontSize: radius * 0.95)),
+    );
+  }
+}
+
 class EmptyState extends StatelessWidget {
   const EmptyState({super.key, required this.text, this.icon = Icons.receipt_long});
 
@@ -316,6 +342,7 @@ Future<String?> pickAccount(BuildContext context, {String? exclude}) {
         child: ListView(shrinkWrap: true, children: [
           for (final a in store.accounts.where((a) => a.id != exclude))
             ListTile(
+              leading: AccountAvatar(account: a),
               title: Text(a.name),
               subtitle: Text(a.group),
               trailing: Text(money(store.balance(a.id))),
