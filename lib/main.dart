@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'backup.dart';
+import 'drive.dart';
 import 'lock.dart';
 import 'screens/lock_screens.dart';
 import 'screens/accounts.dart';
@@ -14,6 +15,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await store.load();
   await appLock.load();
+  await drive.load();
   runApp(const HisaabApp());
   maybeAutoBackup();
 }

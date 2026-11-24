@@ -55,6 +55,13 @@ def android():
         s = s.replace("</application>", aliases + "\n    </application>", 1)
         open(path, "w", encoding="utf-8").write(s)
 
+    # Google Sign-In needs Android 7.0 (API 24) or newer.
+    gradle = os.path.join(ROOT, "android/app/build.gradle.kts")
+    if os.path.isfile(gradle):
+        g = open(gradle, encoding="utf-8").read()
+        g = g.replace("minSdk = flutter.minSdkVersion", "minSdk = maxOf(flutter.minSdkVersion, 24)")
+        open(gradle, "w", encoding="utf-8").write(g)
+
     mains = glob.glob(os.path.join(ROOT, "android/app/src/main/kotlin/**/MainActivity.kt"), recursive=True)
     if len(mains) != 1:
         raise SystemExit(f"Expected one MainActivity.kt, found {mains}")

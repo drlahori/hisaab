@@ -10,6 +10,7 @@ import 'package:share_plus/share_plus.dart';
 import '../app_icon.dart';
 import '../backup.dart';
 import '../common.dart';
+import '../drive.dart';
 import '../lock.dart';
 import '../models.dart';
 import '../store.dart';
@@ -51,12 +52,7 @@ class SettingsScreen extends StatelessWidget {
               child: const Text('Back up now'),
             ),
           ),
-          const ListTile(
-            leading: Icon(Icons.add_to_drive_outlined),
-            title: Text('Google Drive'),
-            subtitle: Text('Coming in the next update'),
-            enabled: false,
-          ),
+          const _DriveSection(),
           const _Header('Share & restore'),
           Builder(
             builder: (ctx) => ListTile(
@@ -137,7 +133,7 @@ class SettingsScreen extends StatelessWidget {
           const _Header('About'),
           const ListTile(
             leading: Icon(Icons.info_outline),
-            title: Text('Hisaab 1.3'),
+            title: Text('Hisaab 1.4'),
             subtitle: Text('No ads. Your data stays on your phone and in backups you choose.'),
           ),
         ]),
@@ -469,6 +465,139 @@ class _AppIconScreenState extends State<AppIconScreen> {
                   ),
               ],
             ),
+    );
+  }
+}
+
+class _DriveSection extends StatelessWidget {
+  const _DriveSection();
+
+  Future<void> _connect(BuildContext context) async {
+    try {
+      await drive.connect();
+      if (!context.mounted) return;
+      toast(context, 'Connected to ${drive.email}');
+      await _backupNow(context);
+    } catch (e) {
+      if (context.mounted) toast(context, 'Could not connect: ${_clean(e)}');
+    }
+  }
+
+  Future<void> _backupNow(BuildContext context) async {
+    try {
+      await drive.upload(backupFileName(), store.exportJson(), interactive: true);
+      if (context.mounted) toast(context, 'Backed up to Google Drive');
+    } catch (e) {
+      if (context.mounted) toast(context, 'Drive backup failed: ${_clean(e)}');
+    }
+  }
+
+  Future<void> _restore(BuildContext context) async {
+    try {
+      final files = await drive.listBackups();
+      if (!context.mounted) return;
+      if (files.isEmpty) {
+        toast(context, 'No backups on Google Drive yet');
+        return;
+      }
+      final picked = await showModalBottomSheet<DriveResult>(
+        context: context,
+        showDragHandle: true,
+        isScrollControlled: true,
+        builder: (ctx) => SafeArea(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.7),
+            child: ListView(shrinkWrap: true, children: [
+              const ListTile(title: Text('Choose a backup from Google Drive')),
+              for (final f in files)
+                ListTile(
+                  leading: const Icon(Icons.description_outlined),
+                  title: Text(DateFormat('EEE, d MMM yyyy · h:mm a').format(f.created)),
+                  subtitle: Text(f.name),
+                  onTap: () => Navigator.pop(ctx, f),
+                ),
+            ]),
+          ),
+        ),
+      );
+      if (picked == null || !context.mounted) return;
+      final ok = await confirm(context, 'Restore this backup?',
+          'All data currently in the app will be replaced by the backup from Google Drive.',
+          action: 'Restore');
+      if (!ok) return;
+      final text = await drive.download(picked.id);
+      store.importJson(text);
+      if (context.mounted) toast(context, 'Backup restored from Google Drive');
+    } catch (e) {
+      if (context.mounted) toast(context, 'Restore failed: ${_clean(e)}');
+    }
+  }
+
+  static String _clean(Object e) => e.toString().replaceFirst('Exception: ', '');
+
+  @override
+  Widget build(BuildContext context) {
+    if (!driveConfigured) {
+      return const ListTile(
+        leading: Icon(Icons.add_to_drive_outlined),
+        title: Text('Google Drive'),
+        subtitle: Text('Not set up in this build yet'),
+        enabled: false,
+      );
+    }
+    return ListenableBuilder(
+      listenable: drive,
+      builder: (context, _) {
+        if (!drive.connected) {
+          return ListTile(
+            leading: const Icon(Icons.add_to_drive_outlined),
+            title: const Text('Google Drive'),
+            subtitle: const Text('Also back up automatically to your own Drive'),
+            trailing: FilledButton.tonal(
+              onPressed: () => _connect(context),
+              child: const Text('Connect'),
+            ),
+          );
+        }
+        final last = drive.lastBackup;
+        return Column(children: [
+          ListTile(
+            leading: const Icon(Icons.add_to_drive),
+            title: const Text('Google Drive'),
+            subtitle: Text(drive.email!),
+            trailing: TextButton(
+              onPressed: () async {
+                final ok = await confirm(context, 'Disconnect Google Drive?',
+                    'Backups already on your Drive stay there.',
+                    action: 'Disconnect');
+                if (ok) await drive.disconnect();
+              },
+              child: const Text('Disconnect'),
+            ),
+          ),
+          ListTile(
+            leading: const SizedBox(width: 24),
+            title: Text(drive.busy
+                ? 'Uploading…'
+                : last == null
+                    ? 'No Drive backup yet'
+                    : 'Last Drive backup ${DateFormat('d MMM · h:mm a').format(last)}'),
+            subtitle: drive.lastError == null
+                ? const Text('Saved in the "Hisaab Backups" folder, newest 30 kept')
+                : Text(drive.lastError!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            trailing: TextButton(
+              onPressed: drive.busy ? null : () => _backupNow(context),
+              child: Text(drive.lastError == null ? 'Back up now' : 'Retry'),
+            ),
+          ),
+          ListTile(
+            leading: const SizedBox(width: 24),
+            title: const Text('Restore from Google Drive'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _restore(context),
+          ),
+        ]);
+      },
     );
   }
 }

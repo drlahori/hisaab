@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'drive.dart';
 import 'store.dart';
 
 /// Frequencies offered in Settings (days -> label). 0 means off.
@@ -34,10 +35,13 @@ Future<List<Directory>> _candidates() async {
   return dirs;
 }
 
+String backupFileName() =>
+    'hisaab-backup-${DateFormat('yyyy-MM-dd_HHmmss').format(DateTime.now())}.json';
+
 /// Writes a backup file to phone storage and returns it.
-Future<File> writeBackupToPhone() async {
-  final name = 'hisaab-backup-${DateFormat('yyyy-MM-dd_HHmmss').format(DateTime.now())}.json';
-  final content = store.exportJson();
+Future<File> writeBackupToPhone({String? name, String? content}) async {
+  name ??= backupFileName();
+  content ??= store.exportJson();
   Object? lastError;
   for (final dir in await _candidates()) {
     try {
@@ -83,11 +87,22 @@ Future<void> maybeAutoBackup() async {
   final due = last == null || DateTime.now().difference(last).inHours >= days * 24 - 2;
   if (!due) return;
   _running = true;
+  final name = backupFileName();
+  final content = store.exportJson();
+  var phoneOk = false;
   try {
-    await writeBackupToPhone();
+    await writeBackupToPhone(name: name, content: content);
+    phoneOk = true;
   } catch (e) {
-    debugPrint('Auto backup failed: $e');
-  } finally {
-    _running = false;
+    debugPrint('Auto backup to phone failed: $e');
   }
+  if (drive.connected) {
+    try {
+      await drive.upload(name, content);
+      if (!phoneOk) store.markBackedUp(DateTime.now(), 'Google Drive');
+    } catch (e) {
+      debugPrint('Auto backup to Drive failed: $e');
+    }
+  }
+  _running = false;
 }
