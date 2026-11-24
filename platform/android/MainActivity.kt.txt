@@ -1,0 +1,62 @@
+package __PACKAGE__
+
+import android.content.ComponentName
+import android.content.pm.PackageManager
+import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.MethodChannel
+
+class MainActivity : FlutterActivity() {
+    private val icons = listOf("IconTeal", "IconNavy", "IconCoral", "IconGold")
+
+    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+        super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "hisaab/icon")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "get" -> result.success(currentIcon())
+                    "set" -> {
+                        val name = call.argument<String>("name")
+                        if (name == null || name !in icons) {
+                            result.error("bad_icon", "Unknown icon $name", null)
+                        } else {
+                            try {
+                                setIcon(name)
+                                result.success(null)
+                            } catch (e: Exception) {
+                                result.error("set_failed", e.message, null)
+                            }
+                        }
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+    }
+
+    private fun component(name: String) = ComponentName(packageName, "$packageName.$name")
+
+    private fun currentIcon(): String {
+        for (n in icons) {
+            if (packageManager.getComponentEnabledSetting(component(n)) ==
+                PackageManager.COMPONENT_ENABLED_STATE_ENABLED) return n
+        }
+        return icons[0]
+    }
+
+    private fun setIcon(name: String) {
+        // Enable the new one first so the app always keeps a launcher entry.
+        packageManager.setComponentEnabledSetting(
+            component(name),
+            PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+            PackageManager.DONT_KILL_APP
+        )
+        for (n in icons) {
+            if (n == name) continue
+            packageManager.setComponentEnabledSetting(
+                component(n),
+                PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                PackageManager.DONT_KILL_APP
+            )
+        }
+    }
+}

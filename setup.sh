@@ -19,6 +19,7 @@ fi
 
 echo "==> Creating the iPhone and Android project files"
 flutter create --org com.gillani --project-name hisaab --platforms ios,android .
+python3 tool/patch_platform.py
 
 echo "==> Adding packages"
 flutter pub add path_provider:^2.1.6 intl:^0.20.3 share_plus:^13.3.1 file_picker:^13.4.1

@@ -1,13 +1,23 @@
 # Hisaab — money manager, no ads
 
-Version 1: transactions (daily / calendar / monthly), income, expense and transfers,
+Version 1.1: automatic backups (daily, weekly, 15 or 30 days), choice of app icon, transactions (daily / calendar / monthly), income, expense and transfers,
 accounts with balances, stats with category chart, monthly budgets, search,
 custom categories and currency, backup and restore, CSV export for Excel.
 
 Backups: **More → Back up now** opens the share sheet. Pick Google Drive, Gmail,
 iCloud, Files or anything else on the phone. **Restore from backup** picks that file back.
 
-## Set up (once)
+## Get the app
+
+Every push to `main` builds a new APK on GitHub. Download **hisaab.apk** from the
+[Releases](../../releases) page on your Android phone and install it.
+
+Builds are signed with a permanent key stored in the `HISAAB_KEYSTORE` repository secret,
+so each new APK installs over the previous one and keeps your data.
+
+## Building on a Mac (optional)
+
+
 
 Needs Homebrew and Xcode (from the App Store, opened once).
 

@@ -17,6 +17,11 @@ class AppStore extends ChangeNotifier {
   String currency = 'Rs';
   bool symbolFront = true;
 
+  /// Automatic backup: 0 = off, otherwise every N days.
+  int autoBackupDays = 0;
+  DateTime? lastAutoBackup;
+  String? lastBackupPath;
+
   File? _file;
   Future<void> _pending = Future.value();
 
@@ -51,6 +56,9 @@ class AppStore extends ChangeNotifier {
         'categories': categories.map((c) => c.toJson()).toList(),
         'txns': txns.map((t) => t.toJson()).toList(),
         'budgets': budgets,
+        'autoBackupDays': autoBackupDays,
+        'lastAutoBackup': lastAutoBackup?.toIso8601String(),
+        'lastBackupPath': lastBackupPath,
       };
 
   /// Parses everything first, then swaps it in, so a bad file changes nothing.
@@ -75,6 +83,9 @@ class AppStore extends ChangeNotifier {
     budgets = newBudgets;
     currency = (m['currency'] as String?) ?? 'Rs';
     symbolFront = (m['symbolFront'] as bool?) ?? true;
+    autoBackupDays = (m['autoBackupDays'] as num?)?.toInt() ?? 0;
+    lastAutoBackup = DateTime.tryParse((m['lastAutoBackup'] as String?) ?? '');
+    lastBackupPath = m['lastBackupPath'] as String?;
   }
 
   Future<void> _write() async {
@@ -102,7 +113,12 @@ class AppStore extends ChangeNotifier {
     if (decoded is! Map<String, dynamic> || decoded['app'] != 'hisaab') {
       throw const FormatException('This file is not a Hisaab backup.');
     }
+    // Keep this phone's backup settings; only the money data is replaced.
+    final days = autoBackupDays, last = lastAutoBackup, path = lastBackupPath;
     _applyMap(decoded);
+    autoBackupDays = days;
+    lastAutoBackup = last;
+    lastBackupPath = path;
     _changed();
   }
 
@@ -244,6 +260,17 @@ class AppStore extends ChangeNotifier {
     } else {
       budgets[categoryId] = amount;
     }
+    _changed();
+  }
+
+  void setAutoBackup(int days) {
+    autoBackupDays = days;
+    _changed();
+  }
+
+  void markBackedUp(DateTime when, String path) {
+    lastAutoBackup = when;
+    lastBackupPath = path;
     _changed();
   }
 

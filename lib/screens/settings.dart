@@ -7,6 +7,8 @@ import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../app_icon.dart';
+import '../backup.dart';
 import '../common.dart';
 import '../models.dart';
 import '../store.dart';
@@ -22,12 +24,42 @@ class SettingsScreen extends StatelessWidget {
       builder: (context, _) => Scaffold(
         appBar: AppBar(title: const Text('More'), centerTitle: true),
         body: ListView(children: [
-          const _Header('Backup'),
+          const _Header('Automatic backup'),
+          ListTile(
+            leading: const Icon(Icons.schedule),
+            title: const Text('Auto backup'),
+            subtitle: Text(kBackupFrequencies[store.autoBackupDays] ?? 'Off'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _pickFrequency(context),
+          ),
+          ListTile(
+            leading: const Icon(Icons.folder_outlined),
+            title: const Text('Saved to'),
+            subtitle: Text(backupFolderLabel()),
+          ),
+          ListTile(
+            leading: const Icon(Icons.history),
+            title: const Text('Last backup'),
+            subtitle: Text(store.lastAutoBackup == null
+                ? 'Never'
+                : DateFormat('EEE, d MMM yyyy · h:mm a').format(store.lastAutoBackup!)),
+            trailing: TextButton(
+              onPressed: () => _backupToPhone(context),
+              child: const Text('Back up now'),
+            ),
+          ),
+          const ListTile(
+            leading: Icon(Icons.add_to_drive_outlined),
+            title: Text('Google Drive'),
+            subtitle: Text('Coming in the next update'),
+            enabled: false,
+          ),
+          const _Header('Share & restore'),
           Builder(
             builder: (ctx) => ListTile(
-              leading: const Icon(Icons.cloud_upload_outlined),
-              title: const Text('Back up now'),
-              subtitle: const Text('Save to Google Drive, Gmail, iCloud, Files…'),
+              leading: const Icon(Icons.ios_share),
+              title: const Text('Share a backup'),
+              subtitle: const Text('Send to Google Drive, Gmail, WhatsApp, Files…'),
               onTap: () => _backup(ctx),
             ),
           ),
@@ -45,6 +77,15 @@ class SettingsScreen extends StatelessWidget {
             ),
           ),
           const _Header('Settings'),
+          if (appIconSupported)
+            ListTile(
+              leading: const Icon(Icons.apps),
+              title: const Text('App icon'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const AppIconScreen()),
+              ),
+            ),
           ListTile(
             leading: const Icon(Icons.payments_outlined),
             title: const Text('Currency'),
@@ -68,7 +109,7 @@ class SettingsScreen extends StatelessWidget {
           const _Header('About'),
           const ListTile(
             leading: Icon(Icons.info_outline),
-            title: Text('Hisaab 1.0'),
+            title: Text('Hisaab 1.1'),
             subtitle: Text('No ads. Your data stays on your phone and in backups you choose.'),
           ),
         ]),
@@ -137,6 +178,35 @@ class SettingsScreen extends StatelessWidget {
       if (context.mounted) toast(context, e.message);
     } catch (e) {
       if (context.mounted) toast(context, 'Restore failed: $e');
+    }
+  }
+
+  Future<void> _pickFrequency(BuildContext context) async {
+    final picked = await showDialog<int>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: const Text('Auto backup'),
+        children: [
+          for (final e in kBackupFrequencies.entries)
+            ListTile(
+              title: Text(e.value),
+              trailing: store.autoBackupDays == e.key ? const Icon(Icons.check) : null,
+              onTap: () => Navigator.pop(ctx, e.key),
+            ),
+        ],
+      ),
+    );
+    if (picked == null) return;
+    store.setAutoBackup(picked);
+    if (picked > 0) await _backupToPhone(context);
+  }
+
+  Future<void> _backupToPhone(BuildContext context) async {
+    try {
+      await writeBackupToPhone();
+      if (context.mounted) toast(context, 'Backup saved to ${backupFolderLabel()}');
+    } catch (e) {
+      if (context.mounted) toast(context, 'Backup failed: $e');
     }
   }
 
@@ -277,5 +347,81 @@ class _CategoryList extends StatelessWidget {
       type: type,
       emoji: e,
     ));
+  }
+}
+
+class AppIconScreen extends StatefulWidget {
+  const AppIconScreen({super.key});
+
+  @override
+  State<AppIconScreen> createState() => _AppIconScreenState();
+}
+
+class _AppIconScreenState extends State<AppIconScreen> {
+  String? _current;
+
+  @override
+  void initState() {
+    super.initState();
+    currentAppIcon().then((v) {
+      if (mounted) setState(() => _current = v);
+    }).catchError((Object _) {
+      if (mounted) setState(() => _current = 'IconTeal');
+    });
+  }
+
+  Future<void> _choose(String name) async {
+    try {
+      await setAppIcon(name);
+      setState(() => _current = name);
+      if (mounted) {
+        toast(context, 'Icon changed. Your home screen may take a few seconds to update.');
+      }
+    } catch (e) {
+      if (mounted) toast(context, 'Could not change the icon: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Scaffold(
+      appBar: AppBar(title: const Text('App icon')),
+      body: _current == null
+          ? const Center(child: CircularProgressIndicator())
+          : GridView.count(
+              crossAxisCount: 2,
+              padding: const EdgeInsets.all(24),
+              mainAxisSpacing: 24,
+              crossAxisSpacing: 24,
+              children: [
+                for (final e in kAppIcons.entries)
+                  InkWell(
+                    borderRadius: BorderRadius.circular(28),
+                    onTap: () => _choose(e.key),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(28),
+                        border: Border.all(
+                          color: _current == e.key ? scheme.primary : scheme.outlineVariant,
+                          width: _current == e.key ? 3 : 1,
+                        ),
+                      ),
+                      child: Column(children: [
+                        Expanded(child: Image.asset('assets/icons/${e.value}.png')),
+                        const SizedBox(height: 8),
+                        Text(
+                          e.value[0].toUpperCase() + e.value.substring(1),
+                          style: TextStyle(
+                            fontWeight: _current == e.key ? FontWeight.w700 : FontWeight.w400,
+                          ),
+                        ),
+                      ]),
+                    ),
+                  ),
+              ],
+            ),
+    );
   }
 }
