@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import '../common.dart';
 import '../models.dart';
@@ -156,7 +155,7 @@ class AccountEditor extends StatefulWidget {
 class _AccountEditorState extends State<AccountEditor> {
   late final _name = TextEditingController(text: widget.account?.name ?? '');
   late final _initial = TextEditingController(
-      text: widget.account == null ? '' : NumberFormat('0.##').format(widget.account!.initial));
+      text: widget.account == null ? '' : amountText(widget.account!.initial));
   late final _note = TextEditingController(text: widget.account?.note ?? '');
   late String _group = widget.account?.group ?? 'Cash';
 
@@ -236,6 +235,7 @@ class _AccountEditorState extends State<AccountEditor> {
         TextField(
           controller: _initial,
           keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+          inputFormatters: [AmountFormatter(allowNegative: true)],
           decoration: InputDecoration(
             labelText: 'Starting balance',
             helperText: 'Use a minus sign for money you owe, e.g. a card balance',

@@ -37,7 +37,7 @@ class _TxnEditorState extends State<TxnEditor> {
       _accountId = t.accountId;
       _toAccountId = t.toAccountId;
       _categoryId = t.categoryId;
-      _amount.text = NumberFormat('0.##').format(t.amount);
+      _amount.text = amountText(t.amount);
       _note.text = t.note;
     } else {
       _type = TxType.expense;
@@ -152,6 +152,7 @@ class _TxnEditorState extends State<TxnEditor> {
             controller: _amount,
             autofocus: !_editing,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [AmountFormatter()],
             style: TextStyle(fontSize: 28, fontWeight: FontWeight.w600, color: color),
             decoration: InputDecoration(
               labelText: 'Amount',

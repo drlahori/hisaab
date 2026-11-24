@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 import 'models.dart';
@@ -39,6 +40,75 @@ Color typeColor(TxType t) => switch (t) {
     };
 
 double? parseAmount(String s) => double.tryParse(s.replaceAll(',', '').trim());
+
+/// Amount shown in an input box, e.g. 1500000 -> "1,500,000".
+String amountText(double v) => _num.format(v);
+
+/// Adds thousands commas while typing: 1000000 -> 1,000,000. Max 2 decimals.
+class AmountFormatter extends TextInputFormatter {
+  AmountFormatter({this.allowNegative = false});
+
+  final bool allowNegative;
+
+  static String _group(String digits) {
+    final b = StringBuffer();
+    for (var i = 0; i < digits.length; i++) {
+      if (i > 0 && (digits.length - i) % 3 == 0) b.write(',');
+      b.write(digits[i]);
+    }
+    return b.toString();
+  }
+
+  static int _significantBefore(String s, int end) {
+    var n = 0;
+    for (var i = 0; i < end && i < s.length; i++) {
+      final c = s[i];
+      if (c == '.' || c == '-' || (c.codeUnitAt(0) >= 48 && c.codeUnitAt(0) <= 57)) n++;
+    }
+    return n;
+  }
+
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    final raw = newValue.text;
+    var negative = false;
+    var intDigits = StringBuffer();
+    var decDigits = StringBuffer();
+    var seenDot = false;
+    for (var i = 0; i < raw.length; i++) {
+      final c = raw[i];
+      final code = c.codeUnitAt(0);
+      if (c == '-' && allowNegative && i == 0) {
+        negative = true;
+      } else if (c == '.') {
+        seenDot = true;
+      } else if (code >= 48 && code <= 57) {
+        if (!seenDot) {
+          intDigits.write(c);
+        } else if (decDigits.length < 2) {
+          decDigits.write(c);
+        }
+      }
+    }
+    var ints = intDigits.toString().replaceFirst(RegExp(r'^0+(?=\d)'), '');
+    if (ints.isEmpty && seenDot) ints = '0';
+    final text = '${negative ? '-' : ''}${_group(ints)}${seenDot ? '.$decDigits' : ''}';
+
+    // Keep the cursor after the same number of digits as before.
+    final want = _significantBefore(raw, newValue.selection.baseOffset < 0 ? raw.length : newValue.selection.baseOffset);
+    var offset = text.length;
+    var count = 0;
+    for (var i = 0; i < text.length; i++) {
+      if (count >= want) {
+        offset = i;
+        break;
+      }
+      if (text[i] != ',') count++;
+    }
+    if (count < want) offset = text.length;
+    return TextEditingValue(text: text, selection: TextSelection.collapsed(offset: offset));
+  }
+}
 
 Future<void> openTxnEditor(BuildContext context,
     {Txn? txn, DateTime? date, String? accountId}) {
@@ -339,6 +409,7 @@ class _PromptDialogState extends State<_PromptDialog> {
         keyboardType: widget.number
             ? const TextInputType.numberWithOptions(decimal: true)
             : TextInputType.text,
+        inputFormatters: widget.number ? [AmountFormatter()] : null,
         decoration: InputDecoration(hintText: widget.hint),
         onSubmitted: (v) => Navigator.pop(context, v),
       ),

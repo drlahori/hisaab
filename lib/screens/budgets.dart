@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import '../common.dart';
 import '../models.dart';
@@ -36,7 +35,7 @@ class BudgetsScreen extends StatelessWidget {
                   final v = await promptText(
                     context,
                     'Budget for ${c.name}',
-                    initial: current == null ? '' : NumberFormat('0.##').format(current),
+                    initial: current == null ? '' : amountText(current),
                     hint: 'Monthly amount (0 to remove)',
                     number: true,
                   );
