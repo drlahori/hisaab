@@ -12,9 +12,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -28,7 +28,7 @@ jobs:
         run: flutter create --org com.gillani --project-name hisaab --platforms android .
 
       - name: Add packages
-        run: flutter pub add path_provider intl share_plus file_picker
+        run: flutter pub add path_provider:^2.1.6 intl:^0.20.3 share_plus:^13.3.1 file_picker:^13.4.1
 
       - name: Build APK
         run: |

@@ -119,12 +119,9 @@ class SettingsScreen extends StatelessWidget {
 
   Future<void> _restore(BuildContext context) async {
     try {
-      final res = await FilePicker.platform.pickFiles(type: FileType.any, withData: true);
-      if (res == null || res.files.isEmpty) return;
-      final f = res.files.single;
-      List<int>? bytes = f.bytes;
-      if (bytes == null && f.path != null) bytes = await File(f.path!).readAsBytes();
-      if (bytes == null) throw const FormatException('Could not read the file.');
+      final f = await FilePicker.pickFile(type: FileType.any);
+      if (f == null) return;
+      final bytes = await f.readAsBytes();
       final text = utf8.decode(bytes);
       if (!context.mounted) return;
       final ok = await confirm(
