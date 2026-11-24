@@ -1,0 +1,20 @@
+name: hisaab
+description: "Hisaab - personal money manager. No ads."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.5.0
+
+# Packages (path_provider, intl, share_plus, file_picker) are added by setup.sh
+# with `flutter pub add`, so you always get versions that match your Flutter.
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
