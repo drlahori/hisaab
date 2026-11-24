@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'backup.dart';
+import 'lock.dart';
+import 'screens/lock_screens.dart';
 import 'screens/accounts.dart';
 import 'screens/settings.dart';
 import 'screens/stats.dart';
@@ -10,6 +12,7 @@ import 'store.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await store.load();
+  await appLock.load();
   runApp(const HisaabApp());
   maybeAutoBackup();
 }
@@ -43,6 +46,13 @@ class HisaabApp extends StatelessWidget {
           _ => ThemeMode.system,
         },
         home: const HomeShell(),
+        builder: (context, child) => ListenableBuilder(
+          listenable: appLock,
+          builder: (context, _) => Stack(children: [
+            if (child != null) child,
+            if (appLock.locked) const Positioned.fill(child: LockScreen()),
+          ]),
+        ),
       ),
     );
   }
@@ -72,7 +82,12 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) maybeAutoBackup();
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
+      appLock.onPaused();
+    } else if (state == AppLifecycleState.resumed) {
+      appLock.onResumed();
+      maybeAutoBackup();
+    }
   }
 
   static const _pages = <Widget>[

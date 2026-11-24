@@ -10,10 +10,12 @@ import 'package:share_plus/share_plus.dart';
 import '../app_icon.dart';
 import '../backup.dart';
 import '../common.dart';
+import '../lock.dart';
 import '../models.dart';
 import '../store.dart';
 import 'budgets.dart';
 import 'calculator.dart';
+import 'lock_screens.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -78,6 +80,18 @@ class SettingsScreen extends StatelessWidget {
             ),
           ),
           const _Header('Settings'),
+          ListenableBuilder(
+            listenable: appLock,
+            builder: (context, _) => ListTile(
+              leading: const Icon(Icons.lock_outline),
+              title: const Text('App lock'),
+              subtitle: Text(const {'pin': 'PIN', 'pattern': 'Pattern'}[appLock.type] ?? 'Off'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const AppLockScreen()),
+              ),
+            ),
+          ),
           ListTile(
             leading: const Icon(Icons.dark_mode_outlined),
             title: const Text('Theme'),
@@ -123,7 +137,7 @@ class SettingsScreen extends StatelessWidget {
           const _Header('About'),
           const ListTile(
             leading: Icon(Icons.info_outline),
-            title: Text('Hisaab 1.2'),
+            title: Text('Hisaab 1.3'),
             subtitle: Text('No ads. Your data stays on your phone and in backups you choose.'),
           ),
         ]),

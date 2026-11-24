@@ -31,7 +31,7 @@ jobs:
         run: python3 tool/patch_platform.py
 
       - name: Add packages
-        run: flutter pub add path_provider:^2.1.6 intl:^0.20.3 share_plus:^13.3.1 file_picker:^13.4.1
+        run: flutter pub add path_provider:^2.1.6 intl:^0.20.3 share_plus:^13.3.1 file_picker:^13.4.1 crypto:^3.0.3
 
       # The same key must sign every build, or Android refuses to update the app.
       - name: Use the permanent signing key
