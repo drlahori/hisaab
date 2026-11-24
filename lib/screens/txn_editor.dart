@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../common.dart';
 import '../models.dart';
 import '../store.dart';
+import 'calculator.dart';
 
 class TxnEditor extends StatefulWidget {
   const TxnEditor({super.key, this.txn, this.initialDate, this.initialAccountId});
@@ -158,6 +159,15 @@ class _TxnEditorState extends State<TxnEditor> {
               labelText: 'Amount',
               prefixText: '${store.currency} ',
               border: const OutlineInputBorder(),
+              suffixIcon: IconButton(
+                tooltip: 'Calculator',
+                icon: const Icon(Icons.calculate_outlined),
+                onPressed: () async {
+                  final v = await openCalculator(context,
+                      initial: parseAmount(_amount.text), pickAmount: true);
+                  if (v != null) setState(() => _amount.text = amountText(v));
+                },
+              ),
             ),
           ),
           const SizedBox(height: 8),

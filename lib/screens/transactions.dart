@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../common.dart';
 import '../models.dart';
 import '../store.dart';
+import 'calculator.dart';
 
 class TransactionsScreen extends StatefulWidget {
   const TransactionsScreen({super.key});
@@ -56,6 +57,11 @@ class _TransactionsScreenState extends State<TransactionsScreen>
               onChanged: (m) => setState(() => _month = m),
             ),
             actions: [
+              IconButton(
+                tooltip: 'Calculator',
+                icon: const Icon(Icons.calculate_outlined),
+                onPressed: () => openCalculator(context),
+              ),
               IconButton(
                 icon: const Icon(Icons.search),
                 onPressed: () => Navigator.of(context).push(

@@ -13,6 +13,7 @@ import '../common.dart';
 import '../models.dart';
 import '../store.dart';
 import 'budgets.dart';
+import 'calculator.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -77,6 +78,19 @@ class SettingsScreen extends StatelessWidget {
             ),
           ),
           const _Header('Settings'),
+          ListTile(
+            leading: const Icon(Icons.dark_mode_outlined),
+            title: const Text('Theme'),
+            subtitle: Text(const {'system': 'Same as phone', 'light': 'Light', 'dark': 'Dark'}[store.theme] ?? 'Same as phone'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _pickTheme(context),
+          ),
+          ListTile(
+            leading: const Icon(Icons.calculate_outlined),
+            title: const Text('Calculator'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => openCalculator(context),
+          ),
           if (appIconSupported)
             ListTile(
               leading: const Icon(Icons.apps),
@@ -109,7 +123,7 @@ class SettingsScreen extends StatelessWidget {
           const _Header('About'),
           const ListTile(
             leading: Icon(Icons.info_outline),
-            title: Text('Hisaab 1.1'),
+            title: Text('Hisaab 1.2'),
             subtitle: Text('No ads. Your data stays on your phone and in backups you choose.'),
           ),
         ]),
@@ -179,6 +193,25 @@ class SettingsScreen extends StatelessWidget {
     } catch (e) {
       if (context.mounted) toast(context, 'Restore failed: $e');
     }
+  }
+
+  Future<void> _pickTheme(BuildContext context) async {
+    const options = {'system': 'Same as phone', 'light': 'Light', 'dark': 'Dark'};
+    final picked = await showDialog<String>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: const Text('Theme'),
+        children: [
+          for (final e in options.entries)
+            ListTile(
+              title: Text(e.value),
+              trailing: store.theme == e.key ? const Icon(Icons.check) : null,
+              onTap: () => Navigator.pop(ctx, e.key),
+            ),
+        ],
+      ),
+    );
+    if (picked != null) store.setTheme(picked);
   }
 
   Future<void> _pickFrequency(BuildContext context) async {
